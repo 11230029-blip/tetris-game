@@ -408,6 +408,13 @@
             '無限': 500
         };
         
+        const DIFFICULTY_SCORE_LIMITS = {
+            '簡單': 5000,
+            '中等': 10000,
+            '困難': 20000,
+            '無限': Infinity
+        };
+        
         let grid = [];
         let currentPiece = null;
         let score = 0;
