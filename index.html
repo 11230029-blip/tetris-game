@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄羅斯方塊</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px);
+            animation: scan 8s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-50%, -50%); }
+        }
+        
+        #game-container {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow: 
+                0 0 60px rgba(126, 34, 206, 0.6),
+                inset 0 0 30px rgba(255, 255, 255, 0.1),
+                0 10px 50px rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(10px);
+        }
+        
+        #game-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff, #ff00ff);
+            border-radius: 30px;
+            z-index: -1;
+            opacity: 0.5;
+            animation: rotate-border 3s linear infinite;
+        }
+        
+        @keyframes rotate-border {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        #menu, #game-screen, #game-over {
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 36px;
+            margin-bottom: 40px;
+            text-shadow: 
+                0 0 10px #fff,
+                0 0 20px #fff,
+                0 0 30px #ff00ff,
+                0 0 40px #ff00ff,
+                0 0 50px #ff00ff;
+            animation: glow 2s ease-in-out infinite alternate;
+            letter-spacing: 3px;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #ff00ff; }
+            to { text-shadow: 0 0 20px #fff, 0 0 30px #ff00ff, 0 0 40px #ff00ff, 0 0 50px #ff00ff, 0 0 60px #ff00ff; }
+        }
+        
+        .menu-btn {
+            display: block;
+            width: 320px;
+            margin: 20px auto;
+            padding: 18px;
+            font-size: 16px;
+            font-family: 'Press Start 2P', cursive;
+            border: 3px solid #00ffff;
+            border-radius: 15px;
+            cursor: pointer;
+            background: linear-gradient(135deg, rgba(0,255,255,0.2) 0%, rgba(255,0,255,0.2) 100%);
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,255,255,0.5);
+        }
+        
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .menu-btn:hover::before {
+            width: 400px;
+            height: 400px;
+        }
+        
+        .menu-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(0,255,255,0.8);
+            border-color: #ff00ff;
+        }
+        
+        .menu-btn span {
+            position: relative;
+            z-index: 1;
+        }
+        
+        #game-area {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        #canvas-container {
+            position: relative;
+        }
+        
+        canvas {
+            border: 4px solid #00ffff;
+            border-radius: 15px;
+            box-shadow: 
+                0 0 30px rgba(0,255,255,0.6),
+                inset 0 0 20px rgba(0,255,255,0.2);
+            background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+        }
+        
+        #info-panel {
+            background: linear-gradient(135deg, rgba(0,255,255,0.1) 0%, rgba(255,0,255,0.1) 100%);
+            padding: 25px;
+            border-radius: 15px;
+            min-width: 250px;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 0 30px rgba(126, 34, 206, 0.4);
+        }
+        
+        .info-item {
+            margin: 20px 0;
+            font-size: 12px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .info-label {
+            color: #00ffff;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        .info-value {
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 5px #fff;
+        }
+        
+        .controls {
+            margin-top: 25px;
+            font-size: 10px;
+            line-height: 2;
+            color: #aaa;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        
+        #high-scores {
+            margin-top: 40px;
+            background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(255,0,255,0.1) 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,215,0,0.3);
+        }
+        
+        #high-scores h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+        
+        .high-score-item {
+            margin: 15px 0;
+            font-size: 12px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+        
+        .high-score-item span {
+            color: #ffd700;
+            font-size: 14px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,0,60,0.95) 100%);
+            padding: 60px;
+            border-radius: 30px;
+            border: 4px solid #ffd700;
+            box-shadow: 0 0 60px rgba(255,215,0,0.8);
+            z-index: 1000;
+            animation: gameOverAppear 0.5s ease-out;
+        }
+        
+        @keyframes gameOverAppear {
+            from {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        #game-over h2 {
+            font-size: 32px;
+            color: #ff4444;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #ff4444;
+        }
+        
+        #game-over .score-display {
+            font-size: 20px;
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        
+        .new-record {
+            color: #ffd700;
+            font-size: 20px;
+            margin: 20px 0;
+            animation: pulse 1s infinite;
+            text-shadow: 0 0 20px #ffd700;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.7;
+                transform: scale(1.05);
+            }
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float 3s infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) translateX(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateX(50px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="menu">
+            <h1>🎮 俄羅斯方塊 🎮</h1>
+            <button class="menu-btn" onclick="startGame('簡單')"><span>🟢 簡單模式</span></button>
+            <button class="menu-btn" onclick="startGame('中等')"><span>🟡 中等模式</span></button>
+            <button class="menu-btn" onclick="startGame('困難')"><span>🔴 困難模式</span></button>
+            <button class="menu-btn" onclick="startGame('無限')"><span>🌟 無限模式</span></button>
+            
+            <div id="high-scores">
+                <h3>🏆 歷史最高分 🏆</h3>
+                <div class="high-score-item">🟢 簡單: <span id="hs-easy">0</span></div>
+                <div class="high-score-item">🟡 中等: <span id="hs-medium">0</span></div>
+                <div class="high-score-item">🔴 困難: <span id="hs-hard">0</span></div>
+                <div class="high-score-item">🌟 無限: <span id="hs-infinite">0</span></div>
+            </div>
+        </div>
+        
+        <div id="game-screen" class="hidden">
+            <div id="game-area">
+                <div id="canvas-container">
+                    <canvas id="tetris" width="300" height="600"></canvas>
+                </div>
+                <div id="info-panel">
+                    <div class="info-item">
+                        <div class="info-label">💎 分數</div>
+                        <div class="info-value" id="score">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">📊 消除行數</div>
+                        <div class="info-value" id="lines">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">⚡ 難度</div>
+                        <div class="info-value" id="difficulty">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">🏆 最高分</div>
+                        <div class="info-value" id="current-high-score">0</div>
+                    </div>
+                    <div class="controls">
+                        <div class="info-label">🎮 操作說明</div>
+                        ← → 移動<br>
+                        ↓ 加速下落<br>
+                        ↑ 旋轉<br>
+                        空白鍵 快速下落<br>
+                        ESC 返回選單
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="game-over" class="hidden">
+            <h2>💀 遊戲結束 💀</h2>
+            <div class="score-display">
+                最終分數: <span id="final-score" style="color: #00ffff;">0</span>
+            </div>
+            <div id="new-record-text" class="new-record hidden">✨ 新紀錄！✨</div>
+            <button class="menu-btn" onclick="backToMenu()" style="margin-top: 30px;"><span>返回選單</span></button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tetris');
+        const ctx = canvas.getContext('2d');
+        const BLOCK_SIZE = 30;
+        const ROWS = 20;
+        const COLS = 10;
+        
+        const SHAPES = [
+            [[1,1,1,1]], // I
+            [[1,1],[1,1]], // O
+            [[1,1,1],[0,1,0]], // T
+            [[1,1,1],[1,0,0]], // L
+            [[1,1,1],[0,0,1]], // J
+            [[1,1,0],[0,1,1]], // S
+            [[0,1,1],[1,1,0]] // Z
+        ];
+        
+        const COLORS = ['#00ffff', '#ffff00', '#ff00ff', '#ff8800', '#0066ff', '#00ff00', '#ff0000'];
+        
+        const DIFFICULTY_SPEEDS = {
+            '簡單': 800,
+            '中等': 500,
+            '困難': 300,
+            '無限': 500
+        };
+        
+        let grid = [];
+        let currentPiece = null;
+        let score = 0;
+        let lines = 0;
+        let difficulty = '';
+        let gameOver = false;
+        let lastFallTime = 0;
+        let fallSpeed = 500;
+        let highScores = {
+            '簡單': 0,
+            '中等': 0,
+            '困難': 0,
+            '無限': 0
+        };
+        
+        function initGrid() {
+            grid = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        }
+        
+        function loadHighScores() {
+            const saved = localStorage.getItem('tetrisHighScores');
+            if (saved) {
+                highScores = JSON.parse(saved);
+            }
+            updateHighScoresDisplay();
+        }
+        
+        function saveHighScores() {
+            localStorage.setItem('tetrisHighScores', JSON.stringify(highScores));
+        }
+        
+        function updateHighScoresDisplay() {
+            document.getElementById('hs-easy').textContent = highScores['簡單'];
+            document.getElementById('hs-medium').textContent = highScores['中等'];
+            document.getElementById('hs-hard').textContent = highScores['困難'];
+            document.getElementById('hs-infinite').textContent = highScores['無限'];
+        }
+        
+        function startGame(diff) {
+            difficulty = diff;
+            fallSpeed = DIFFICULTY_SPEEDS[diff];
+            score = 0;
+            lines = 0;
+            gameOver = false;
+            lastFallTime = Date.now();
+            
+            initGrid();
+            spawnPiece();
+            
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-over').classList.add('hidden');
+            
+            updateUI();
+            gameLoop();
+        }
+        
+        function backToMenu() {
+            document.getElementById('menu').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('game-over').classList.add('hidden');
+        }
+        
+        function spawnPiece() {
+            const shapeIndex = Math.floor(Math.random() * SHAPES.length);
+            currentPiece = {
+                shape: SHAPES[shapeIndex].map(row => [...row]),
+                color: COLORS[shapeIndex],
+                x: Math.floor(COLS / 2) - 1,
+                y: 0
+            };
+            
+            if (checkCollision()) {
+                endGame();
+            }
+        }
+        
+        function checkCollision(offsetX = 0, offsetY = 0, shape = currentPiece.shape) {
+            for (let y = 0; y < shape.length; y++) {
+                for (let x = 0; x < shape[y].length; x++) {
+                    if (shape[y][x]) {
+                        const newX = currentPiece.x + x + offsetX;
+                        const newY = currentPiece.y + y + offsetY;
+                        
+                        if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                            return true;
+                        }
+                        
+                        if (newY >= 0 && grid[newY][newX]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function mergePiece() {
+            for (let y = 0; y < currentPiece.shape.length; y++) {
+                for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                    if (currentPiece.shape[y][x]) {
+                        const gridY = currentPiece.y + y;
+                        const gridX = currentPiece.x + x;
+                        if (gridY >= 0) {
+                            grid[gridY][gridX] = currentPiece.color;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function clearLines() {
+            let cleared = 0;
+            
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (grid[y].every(cell => cell !== 0)) {
+                    grid.splice(y, 1);
+                    grid.unshift(Array(COLS).fill(0));
+                    cleared++;
+                    y++;
+                }
+            }
+            
+            lines += cleared;
+            
+            if (cleared === 1) score += 100;
+            else if (cleared === 2) score += 300;
+            else if (cleared === 3) score += 500;
+            else if (cleared === 4) score += 800;
+            
+            updateUI();
+        }
+        
+        function movePiece(dx, dy) {
+            if (!checkCollision(dx, dy)) {
+                currentPiece.x += dx;
+                currentPiece.y += dy;
+                return true;
+            }
+            return false;
+        }
+        
+        function rotatePiece() {
+            const rotated = currentPiece.shape[0].map((_, i) =>
+                currentPiece.shape.map(row => row[i]).reverse()
+            );
+            
+            if (!checkCollision(0, 0, rotated)) {
+                currentPiece.shape = rotated;
+            }
+        }
+        
+        function hardDrop() {
+            while (movePiece(0, 1)) {
+                score += 2;
+            }
+            updateUI();
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製網格背景效果
+            ctx.strokeStyle = 'rgba(0,255,255,0.1)';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= ROWS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * BLOCK_SIZE);
+                ctx.lineTo(COLS * BLOCK_SIZE, i * BLOCK_SIZE);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= COLS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * BLOCK_SIZE, 0);
+                ctx.lineTo(i * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+                ctx.stroke();
+            }
+            
+            // 繪製已固定的方塊（帶發光效果）
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (grid[y][x]) {
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = grid[y][x];
+                        ctx.fillStyle = grid[y][x];
+                        ctx.fillRect(x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        
+                        // 添加高光效果
+                        const gradient = ctx.createLinearGradient(
+                            x * BLOCK_SIZE, y * BLOCK_SIZE,
+                            x * BLOCK_SIZE + BLOCK_SIZE, y * BLOCK_SIZE + BLOCK_SIZE
+                        );
+                        gradient.addColorStop(0, 'rgba(255,255,255,0.3)');
+                        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                    }
+                }
+            }
+            
+            ctx.shadowBlur = 0;
+            
+            // 繪製當前方塊（帶發光效果）
+            if (currentPiece) {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = currentPiece.color;
+                ctx.fillStyle = currentPiece.color;
+                
+                for (let y = 0; y < currentPiece.shape.length; y++) {
+                    for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                        if (currentPiece.shape[y][x]) {
+                            ctx.fillRect(
+                                (currentPiece.x + x) * BLOCK_SIZE + 1,
+                                (currentPiece.y + y) * BLOCK_SIZE + 1,
+                                BLOCK_SIZE - 2,
+                                BLOCK_SIZE - 2
+                            );
+                            
+                            // 添加高光效果
+                            const gradient = ctx.createLinearGradient(
+                                (currentPiece.x + x) * BLOCK_SIZE,
+                                (currentPiece.y + y) * BLOCK_SIZE,
+                                (currentPiece.x + x) * BLOCK_SIZE + BLOCK_SIZE,
+                                (currentPiece.y + y) * BLOCK_SIZE + BLOCK_SIZE
+                            );
+                            gradient.addColorStop(0, 'rgba(255,255,255,0.4)');
+                            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                            ctx.fillStyle = gradient;
+                            ctx.fillRect(
+                                (currentPiece.x + x) * BLOCK_SIZE + 1,
+                                (currentPiece.y + y) * BLOCK_SIZE + 1,
+                                BLOCK_SIZE - 2,
+                                BLOCK_SIZE - 2
+                            );
+                        }
+                    }
+                }
+            }
+            
+            ctx.shadowBlur = 0;
+        }
+        
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lines').textContent = lines;
+            document.getElementById('difficulty').textContent = difficulty;
+            document.getElementById('current-high-score').textContent = highScores[difficulty];
+        }
+        
+        function endGame() {
+            gameOver = true;
+            document.getElementById('final-score').textContent = score;
+            
+            if (score > highScores[difficulty]) {
+                highScores[difficulty] = score;
+                saveHighScores();
+                updateHighScoresDisplay();
+                document.getElementById('new-record-text').classList.remove('hidden');
+            } else {
+                document.getElementById('new-record-text').classList.add('hidden');
+            }
+            
+            document.getElementById('game-over').classList.remove('hidden');
+        }
+        
+        function gameLoop() {
+            if (gameOver) return;
+            
+            const now = Date.now();
+            if (now - lastFallTime > fallSpeed) {
+                lastFallTime = now;
+                
+                if (!movePiece(0, 1)) {
+                    mergePiece();
+                    clearLines();
+                    spawnPiece();
+                }
+            }
+            
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (gameOver || document.getElementById('game-screen').classList.contains('hidden')) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    movePiece(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    movePiece(1, 0);
+                    break;
+                case 'ArrowDown':
+                    if (movePiece(0, 1)) {
+                        score += 1;
+                        updateUI();
+                    }
+                    break;
+                case 'ArrowUp':
+                    rotatePiece();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    hardDrop();
+                    break;
+                case 'Escape':
+                    backToMenu();
+                    break;
+            }
+            
+            draw();
+        });
+        
+        loadHighScores();
+    </script>
+</body>
+</html>
